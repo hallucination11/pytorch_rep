@@ -62,9 +62,6 @@ def train(model,
     target = list()
     total_loss = 0
     for i, (user_item, label) in enumerate(tqdm.tqdm(data_loader, ncols=80, position=0)):
-        print(user_item)
-        print(label)
-        exit()
         label = label.float()
         user_item = user_item.long()
         user_item = user_item.to(DEVICE)  # [B,F]

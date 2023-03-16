@@ -5,11 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+
 class BasicCTR(nn.Module):
     """
     A simple common-used class for CTR models.
     """
-    def __init__(self,field_dims, embed_dim):
+
+    def __init__(self, field_dims, embed_dim):
         """
         :param field_dims: list
         :param embed_dim:
@@ -27,10 +29,12 @@ class BasicCTR(nn.Module):
         """
         raise NotImplemented
 
+
 class FeaturesLinear(torch.nn.Module):
     """
     Linear regression layer for CTR prediction.
     """
+
     def __init__(self, field_dims, output_dim=1):
         super().__init__()
         self.fc = torch.nn.Embedding(sum(field_dims), output_dim)
@@ -91,6 +95,7 @@ class FeaturesEmbedding(torch.nn.Module):
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
         return self.embedding(x)
 
+
 class MultiLayerPerceptron(torch.nn.Module):
     def __init__(self, input_dim, embed_dims, dropout=0.5, output_layer=False):
         super().__init__()
@@ -120,9 +125,10 @@ class MultiLayerPerceptron(torch.nn.Module):
         """
         return self.mlp(x)
 
+
 class InnerProductNetwork(torch.nn.Module):
 
-    def __init__(self,num_fields,is_sum=True):
+    def __init__(self, num_fields, is_sum=True):
         super(InnerProductNetwork, self).__init__()
         self.is_sum = is_sum
         self.num_fields = num_fields
@@ -139,6 +145,7 @@ class InnerProductNetwork(torch.nn.Module):
         else:
             #  以下： 如果不求和 B,1/2* nf*(nf-1), K
             return x[:, self.row] * x[:, self.col]
+
 
 class OuterProductNetwork(torch.nn.Module):
     def __init__(self, num_fields, embed_dim, kernel_type='num'):
@@ -164,7 +171,6 @@ class OuterProductNetwork(torch.nn.Module):
                 self.row.append(i), self.col.append(j)
         torch.nn.init.xavier_uniform_(self.kernel.data)
 
-
     def forward(self, x):
         """
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
@@ -174,7 +180,7 @@ class OuterProductNetwork(torch.nn.Module):
         if self.kernel_type == 'mat':
             #  p [b,1,num_ix,e]
             #  kernel [e, num_ix, e]
-            kp = torch.sum(p.unsqueeze(1) * self.kernel,dim=-1).permute(0,2,1)  #b,num_ix,e
+            kp = torch.sum(p.unsqueeze(1) * self.kernel, dim=-1).permute(0, 2, 1)  # b,num_ix,e
             # #b,num_ix,e
             return torch.sum(kp * q, -1)
         else:
