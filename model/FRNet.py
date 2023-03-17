@@ -6,7 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 import math
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 
 class FRNet(nn.Module):
     """
@@ -14,6 +16,7 @@ class FRNet(nn.Module):
     (1) IEU
     (2) CSGate
     """
+
     def __init__(self, field_length, embed_dim, weight_type="bit", num_layers=1, att_size=10, mlp_layer=256):
         """
         :param field_length: field_length
@@ -43,6 +46,7 @@ class IEU(nn.Module):
     (1) Self-attention
     (2) DNN
     """
+
     def __init__(self, field_length, embed_dim, weight_type="bit",
                  bit_layers=1, att_size=10, mlp_layer=256):
         """
@@ -53,7 +57,7 @@ class IEU(nn.Module):
         :param att_size:
         :param mlp_layer:
         """
-        super(IEU,self).__init__()
+        super(IEU, self).__init__()
         self.input_dim = field_length * embed_dim
         self.weight_type = weight_type
 
@@ -68,8 +72,7 @@ class IEU(nn.Module):
         self.activation = nn.ReLU()
         # self.activation = nn.PReLU()
 
-
-    def forward(self,x_emb):
+    def forward(self, x_emb):
         """
         :param x_emb: B,F,E
         :return: B,F,E (bit-level weights or complementary fetures)
@@ -81,7 +84,7 @@ class IEU(nn.Module):
 
         # (2) CIE unit
         x_bit = self.mlps(x_emb.view(-1, self.input_dim))
-        x_bit = self.bit_projection(x_bit).unsqueeze(1) # B,1,e
+        x_bit = self.bit_projection(x_bit).unsqueeze(1)  # B,1,e
         x_bit = self.activation(x_bit)
 
         # （3）integration unit
@@ -89,7 +92,7 @@ class IEU(nn.Module):
 
         if self.weight_type == "vector":
             # To compute vector-level importance in IEU_W
-            x_out = torch.sum(x_out,dim=2,keepdim=True)
+            x_out = torch.sum(x_out, dim=2, keepdim=True)
             # B,F,1
             return x_out
 
@@ -104,17 +107,16 @@ class SelfAttentionIEU(nn.Module):
         """
         super(SelfAttentionIEU, self).__init__()
         self.embed_dim = embed_dim
-        self.trans_Q = nn.Linear(embed_dim,att_size)
-        self.trans_K = nn.Linear(embed_dim,att_size)
-        self.trans_V = nn.Linear(embed_dim,att_size)
-        self.projection = nn.Linear(att_size,embed_dim)
+        self.trans_Q = nn.Linear(embed_dim, att_size)
+        self.trans_K = nn.Linear(embed_dim, att_size)
+        self.trans_V = nn.Linear(embed_dim, att_size)
+        self.projection = nn.Linear(att_size, embed_dim)
         # self.scale = 1.0/ torch.LongTensor(embed_dim)
         # self.scale = torch.sqrt(1.0 / torch.tensor(embed_dim).float())
         # self.dropout = nn.Dropout(0.5)
         # self.layer_norm = nn.LayerNorm(embed_dim)
 
-
-    def forward(self,x, scale=None):
+    def forward(self, x, scale=None):
         """
         :param x: B,F,E
         :return: B,F,E
@@ -160,8 +162,8 @@ class MultiLayerPerceptronPrelu(torch.nn.Module):
 
 
 if __name__ == '__main__':
-    x_emb = torch.randn(32,10,20)
+    x_emb = torch.randn(32, 10, 20)
     print(x_emb.size())
-    frnet = FRNet(10,20)
+    frnet = FRNet(10, 20)
     x_emb2 = frnet(x_emb)
     print(x_emb2.size())

@@ -20,28 +20,30 @@ import numpy as np
 import random
 
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from sklearn.metrics import log_loss, roc_auc_score
 
 sys.path.append("../..")
 from dataset.frappe.dataloader import getdataloader_frappe, getdataloader_ml
 
 from utils.utils_de import *
-from utils.earlystoping import EarlyStopping,EarlyStoppingLoss
+from utils.earlystoping import EarlyStopping, EarlyStoppingLoss
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def get_model(
         name,
         field_dims,
         embed_dim=20,
         mlp_layers=(400, 400, 400)):
-
     if name == "fm":
         return FactorizationMachineModel(field_dims, embed_dim)
     elif name == "fmfrnet":
-        return FMFRNet(field_dims,embed_dim,num_layers=2, weight_type="bit", att_size=20, mlp_layer=256)
+        return FMFRNet(field_dims, embed_dim, num_layers=2, weight_type="bit", att_size=20, mlp_layer=256)
     elif name == "fmfrnet_vec":
-        return FMFRNet(field_dims,embed_dim,num_layers=2,weight_type="vector",att_size=20,mlp_layer=256)
+        return FMFRNet(field_dims, embed_dim, num_layers=2, weight_type="vector", att_size=20, mlp_layer=256)
 
     elif name == "dfm":
         return FactorizationMachineModel(field_dims, embed_dim)
@@ -52,9 +54,11 @@ def get_model(
     else:
         raise ValueError('unknown model name: ' + name)
 
+
 def count_params(model):
     params = sum(param.numel() for param in model.parameters())
     return params
+
 
 def train(model,
           optimizer,
@@ -68,7 +72,7 @@ def train(model,
         label = label.float()
         user_item = user_item.long()
         user_item = user_item.to(DEVICE)  # [B,F]
-        label = label.to(DEVICE)   # [B]
+        label = label.to(DEVICE)  # [B]
 
         model.zero_grad()
         pred_y = torch.sigmoid(model(user_item).squeeze(1))
@@ -101,15 +105,15 @@ def test_roc(model, data_loader):
 
 
 def main(dataset_name,
-          model_name,
-          epoch,
-          learning_rate,
-          batch_size,
-          weight_decay,
-          save_dir,
-          path,
-          embed_dim,
-          hint=""):
+         model_name,
+         epoch,
+         learning_rate,
+         batch_size,
+         weight_decay,
+         save_dir,
+         path,
+         embed_dim,
+         hint=""):
     path = "./data/"
     field_dims, trainLoader, validLoader, testLoader = \
         getdataloader_frappe(path=path, batch_size=batch_size)
@@ -121,12 +125,13 @@ def main(dataset_name,
         paths = os.path.join(save_dir, dataset_name, model_name, str(K))
         if not os.path.exists(paths):
             os.makedirs(paths)
-        with open(paths + f"/{model_name}logs2_{K}_{batch_size}_{learning_rate}_{weight_decay}_{time_fix}.p", "a+") as fout:
+        with open(paths + f"/{model_name}logs2_{K}_{batch_size}_{learning_rate}_{weight_decay}_{time_fix}.p",
+                  "a+") as fout:
             # 记录配置
             fout.write("Batch_size:{}\tlearning_rate:{}\tStartTime:{}\tweight_decay:{}\n"
                        .format(batch_size, learning_rate, time.strftime("%d%H%M%S", time.localtime()), weight_decay))
             print("Start train -- K : {}".format(K))
-            criterion = torch.nn.BCELoss() # CTR
+            criterion = torch.nn.BCELoss()  # CTR
             model = get_model(
                 name=model_name,
                 field_dims=field_dims,
@@ -149,7 +154,7 @@ def main(dataset_name,
 
             scheduler = ReduceLROnPlateau(optimizer, 'max', verbose=True, patience=4)
             for epoch_i in range(epoch):
-                print(__file__, model_name, K, learning_rate, weight_decay, epoch_i,"/",epoch)
+                print(__file__, model_name, K, learning_rate, weight_decay, epoch_i, "/", epoch)
 
                 start = time.time()
 
@@ -163,7 +168,7 @@ def main(dataset_name,
                     val_auc_best = val_auc
                     auc_index_record = "epoch_i:{}\t{:.6f}\t{:.6f}".format(epoch_i, test_auc, test_loss)
                     # save model
-                    torch.save(model, paths+f"/{model_name}_best_auc_{K}_{time_fix}.pkl")
+                    torch.save(model, paths + f"/{model_name}_best_auc_{K}_{time_fix}.pkl")
 
                 if val_loss < val_loss_best:
                     val_loss_best = val_loss
@@ -171,10 +176,10 @@ def main(dataset_name,
 
                 print(
                     "Train  K:{}\tEpoch:{}\ttrain_loss:{:.6f}\tval_loss:{:.6f}\tval_auc:{:.6f}\ttime:{:.6f}\ttest_loss:{:.6f}\ttest_auc:{:.6f}\n"
-                        .format(K, epoch_i, train_loss, val_loss, val_auc, end - start, test_loss, test_auc))
+                    .format(K, epoch_i, train_loss, val_loss, val_auc, end - start, test_loss, test_auc))
                 fout.write(
                     "Train  K:{}\tEpoch:{}\ttrain_loss:{:.6f}\tval_loss:{:.6f}\tval_auc:{:.6f}\ttime:{:.6f}\ttest_loss:{:.6f}\ttest_auc:{:.6f}\n"
-                        .format(K, epoch_i, train_loss, val_loss, val_auc, end - start, test_loss, test_auc))
+                    .format(K, epoch_i, train_loss, val_loss, val_auc, end - start, test_loss, test_auc))
 
                 early_stopping(val_loss)
                 if early_stopping.early_stop:
@@ -189,6 +194,7 @@ def main(dataset_name,
             fout.write("auc_best:\t{}\nloss_best:\t{}".format(auc_index_record, loss_index_record))
             # torch.save({"state_dict": model.state_dict()}, paths + f"/{model_name}_final_{K}_{time_fix}.pt")
 
+
 def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
@@ -196,11 +202,13 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
+
 if __name__ == '__main__':
     seed = np.random.randint(0, 1000)
     setup_seed(seed)
 
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', default='chkpt0523')
     parser.add_argument('--dataset_name', default='frappe2')
@@ -220,7 +228,6 @@ if __name__ == '__main__':
     elif args.choice == 1:
         model_names = ["fmfrnet"] * 2
 
-
     args.dataset_name = "frappe"
     # args.dataset_name = "frappe/gate2"
     print(model_names)
@@ -230,14 +237,12 @@ if __name__ == '__main__':
             args.weight_decay = weight_decay
             for name in model_names:
                 main(dataset_name=args.dataset_name,
-                      model_name=name,
-                      epoch=args.epoch,
-                      learning_rate=args.learning_rate,
-                      batch_size=args.batch_size,
-                      weight_decay=args.weight_decay,
-                      save_dir=args.save_dir,
-                      path=args.path,
-                      embed_dim= args.embed_dim,
-                      hint=args.hint)
-
-
+                     model_name=name,
+                     epoch=args.epoch,
+                     learning_rate=args.learning_rate,
+                     batch_size=args.batch_size,
+                     weight_decay=args.weight_decay,
+                     save_dir=args.save_dir,
+                     path=args.path,
+                     embed_dim=args.embed_dim,
+                     hint=args.hint)
